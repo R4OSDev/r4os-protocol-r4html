@@ -13,28 +13,27 @@ pub const result_malformed: i32 = -6;
 pub const result_limit: i32 = -8;
 pub const result_busy: i32 = -9;
 
-var protocol_api: ?*const r4os.r4dev.ProtocolApi = null;
 var workspace_busy: u8 = 0;
 var document_workspace: r4os.html.Document = .{};
 var view_workspace: r4os.html.PlainView = .{};
 
 comptime {
-    asm (r4os.r4dev.protocolEntriesAsm("r4html_init", "r4html_shutdown", "r4html_query", "r4html_dispatch"));
+    asm (r4os.technical2.protocolEntriesAsm("r4html_init", "r4html_shutdown", "r4html_query", "r4html_dispatch"));
 }
 
-export fn r4html_init(api: *const r4os.r4dev.ProtocolApi) callconv(.c) i32 {
-    protocol_api = api;
-    var ctx = r4os.r4dev.ProtocolContext.init(api);
+export fn r4html_init(api: *const r4os.r4dev.ProtocolApi2) callconv(.c) i32 {
+    var ctx = r4os.r4dev.ProtocolContext2.init(api);
+    if (!ctx.requires(.{ "register_role", "set_status" })) return r4os.abi.err_no_fn;
     ctx.logInfo("R4HTML.R4P init");
-    _ = ctx.registerRole("application.html", .data, 0);
-    _ = ctx.setStatus(.active, "HTML document parser active");
-    return 0;
+    const registered = ctx.registerRole("application.html", .data, 0);
+    if (registered != 0) return registered;
+    const result = ctx.setStatus(.active, "HTML document parser active");
+    return result;
 }
 
 export fn r4html_shutdown() callconv(.c) i32 {
     document_workspace.reset();
     view_workspace.reset();
-    protocol_api = null;
     return 0;
 }
 
